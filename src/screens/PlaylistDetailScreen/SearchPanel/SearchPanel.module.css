@@ -1,0 +1,121 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: var(--z-panel);
+}
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 90vw;
+  background: var(--bg-elevated);
+  border-left: 0.5px solid var(--border-default);
+  box-shadow: var(--shadow-lg);
+  z-index: calc(var(--z-panel) + 1);
+  display: flex;
+  flex-direction: column;
+  animation: pm-slide-in-right var(--dur-slow) var(--ease-out);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 18px;
+  border-bottom: 0.5px solid var(--border-default);
+}
+
+.panelTitle {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+  flex: 1;
+}
+
+.searchBar {
+  padding: 14px 18px;
+  display: flex;
+  gap: 8px;
+}
+
+.results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 12px 18px;
+}
+
+.noResults {
+  padding: 40px 14px;
+  text-align: center;
+  color: var(--ink-4);
+  font-size: var(--fs-13);
+}
+
+.resultItem {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 10px;
+  padding: 8px 6px;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+
+.resultArt {
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: block;
+}
+
+.resultArtPlaceholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #333, #1a1a1a);
+  flex-shrink: 0;
+}
+
+.resultMeta {
+  min-width: 0;
+}
+
+.resultTitle {
+  font-size: var(--fs-13);
+  color: var(--ink-1);
+}
+
+.resultArtist {
+  font-size: var(--fs-12);
+  color: var(--ink-3);
+}
+
+.addedLabel {
+  font-size: var(--fs-12);
+  color: var(--ink-5);
+}
+
+.addBtn {
+  background: transparent;
+  border: none;
+  color: var(--pm-green);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-12);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .panel {
+    width: 100%;
+    max-width: 100%;
+    border-left: none;
+  }
+}

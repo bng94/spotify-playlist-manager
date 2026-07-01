@@ -1,0 +1,32 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--bg-base);
+  gap: 28px;
+}
+
+.title {
+  font-size: var(--fs-36);
+  font-weight: var(--fw-heavy);
+  text-align: center;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-danger-bg);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  color: var(--color-danger);
+  text-align: left;
+  max-width: 320px;
+}
+
+

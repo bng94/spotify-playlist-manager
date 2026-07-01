@@ -1,0 +1,46 @@
+.header {
+  margin-bottom: 28px;
+}
+
+.overlineGap {
+  margin-bottom: 8px;
+}
+
+.pageTitle {
+  font-size: var(--fs-28);
+}
+
+.body {
+  max-width: 640px;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.sectionTitle {
+  font-size: var(--fs-16);
+  font-weight: var(--fw-semibold);
+  color: var(--ink-1);
+  margin: 0 0 10px;
+}
+
+.paragraph {
+  font-size: var(--fs-14);
+  color: var(--ink-2);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.link {
+  color: var(--pm-green);
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.actions {
+  margin-top: 32px;
+}

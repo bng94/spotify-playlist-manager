@@ -1,0 +1,149 @@
+.row {
+  display: grid;
+  grid-template-columns: 28px 28px 2fr 1fr 120px 60px 32px;
+  gap: 12px;
+  padding: 8px 12px;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.row:hover {
+  background: var(--bg-surface);
+}
+
+.row.selected {
+  background: var(--pm-green-soft);
+}
+
+.row.selected:hover {
+  background: var(--pm-green-soft);
+}
+
+.indexCell {
+  font-size: var(--fs-12);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playIcon {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.row:hover .playIcon {
+  display: flex;
+}
+
+.row:hover .indexNum {
+  display: none;
+}
+
+.indexCell.current .playIcon {
+  display: flex;
+}
+
+.indexCell.current .indexNum {
+  display: none;
+}
+
+.titleCell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.albumThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
+.titleMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.title {
+  font-size: var(--fs-14);
+  color: var(--ink-1);
+  font-weight: var(--fw-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title.current {
+  color: var(--pm-green);
+}
+
+.explicit {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  color: var(--ink-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 2px;
+  padding: 0 3px;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+}
+
+.artist {
+  font-size: var(--fs-12);
+  color: var(--ink-3);
+}
+
+.album {
+  font-size: var(--fs-13);
+  color: var(--ink-3);
+}
+
+.addedAt {
+  font-size: var(--fs-12);
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+.duration {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  color: var(--ink-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.row:hover .openBtn {
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .row {
+    grid-template-columns: 28px 28px 1fr 60px 32px;
+  }
+
+  .album,
+  .addedAt {
+    display: none;
+  }
+}

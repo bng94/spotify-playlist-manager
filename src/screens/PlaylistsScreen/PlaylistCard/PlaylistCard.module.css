@@ -1,0 +1,48 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: transparent;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.card:hover {
+  background: var(--bg-elevated);
+}
+
+.meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  color: var(--ink-1);
+}
+
+.trackCount {
+  font-size: var(--fs-12);
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.openBtn {
+  flex-shrink: 0;
+}
+
+.card:hover .openBtn {
+  opacity: 1;
+}
+
+.deleteBtn {
+  opacity: 0.4;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.card:hover .deleteBtn {
+  opacity: 1;
+}
