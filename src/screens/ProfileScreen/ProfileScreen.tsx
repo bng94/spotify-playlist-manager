@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Button from "../../components/Button/Button";
+import PageHeader from "../../components/PageHeader/PageHeader";
 import UserAvatar from "../../components/UserAvatar/UserAvatar";
 import { useUser } from "../../contexts/UserContext/UserContext";
 import {
@@ -35,7 +36,7 @@ const ProfileScreen = ({ onBack, onLogout }: ProfileScreenProps) => {
 
   const [topArtists, setTopArtists] = useState<TopArtist[]>([]);
   const [topTracks, setTopTracks] = useState<SpotifyTrack[]>([]);
-  const [topLoading, setTopLoading] = useState(true);
+  const [loadingTopItems, setLoadingTopItems] = useState(true);
   const [followingCount, setFollowingCount] = useState<number | null>(null);
   const [playlistsCount, setPlaylistsCount] = useState<number | null>(null);
 
@@ -45,7 +46,7 @@ const ProfileScreen = ({ onBack, onLogout }: ProfileScreenProps) => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setTopLoading(true);
+      setLoadingTopItems(true);
       const [artistsRes, tracksRes, followingRes, playlistsRes] =
         await Promise.all([
           getTopArtists("long_term", 3),
@@ -60,7 +61,7 @@ const ProfileScreen = ({ onBack, onLogout }: ProfileScreenProps) => {
         setTopTracks(tracksRes.data?.items ?? []);
         setFollowingCount(followingRes.data?.artists.total ?? null);
         setPlaylistsCount(playlistsRes.data?.total ?? null);
-        setTopLoading(false);
+        setLoadingTopItems(false);
       }
     })();
     return () => {
@@ -78,12 +79,7 @@ const ProfileScreen = ({ onBack, onLogout }: ProfileScreenProps) => {
   return (
     <>
       <div>
-        <header className={styles.header}>
-          <div className={`pm-overline-section ${styles.overlineGap}`}>
-            Account
-          </div>
-          <h1 className={`pm-page-title ${styles.pageTitle}`}>Profile</h1>
-        </header>
+        <PageHeader overline="Account" title="Profile" />
 
         <div className={`pm-surface-card ${styles.avatarCard}`}>
           <div className={`app-nav__avatar ${styles.avatar}`}>
@@ -118,14 +114,14 @@ const ProfileScreen = ({ onBack, onLogout }: ProfileScreenProps) => {
                 <Button
                   variant="secondary"
                   pill
-                  disabled={topLoading}
+                  disabled={loadingTopItems}
                   onClick={() => setShowArtistsModal(true)}
                 >
                   See More
                 </Button>
               </div>
 
-              {topLoading ? (
+              {loadingTopItems ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
@@ -166,14 +162,14 @@ const ProfileScreen = ({ onBack, onLogout }: ProfileScreenProps) => {
                 <Button
                   variant="secondary"
                   pill
-                  disabled={topLoading}
+                  disabled={loadingTopItems}
                   onClick={() => setShowTracksModal(true)}
                 >
                   See More
                 </Button>
               </div>
 
-              {topLoading ? (
+              {loadingTopItems ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}

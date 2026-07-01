@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useImageFallback } from "../../hooks/useImageFallback";
 import styles from "./UserAvatar.module.css";
 
 const getInitials = (name: string) =>
@@ -14,14 +14,14 @@ interface UserAvatarProps {
 }
 
 const UserAvatar = ({ imageUrl, displayName }: UserAvatarProps) => {
-  const [failed, setFailed] = useState(false);
+  const { failed, onError } = useImageFallback(imageUrl);
 
   return imageUrl && !failed ? (
     <img
       src={imageUrl}
       alt={displayName ?? "Profile"}
       className={styles.img}
-      onError={() => setFailed(true)}
+      onError={onError}
     />
   ) : (
     <>{displayName ? getInitials(displayName) : "?"}</>

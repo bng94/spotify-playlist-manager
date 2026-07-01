@@ -25,6 +25,12 @@
   padding-bottom: 8px;
 }
 
+.headerSpotifyBtn {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  text-decoration: none;
+}
+
 .overlineGap {
   margin-bottom: 8px;
 }
@@ -144,12 +150,6 @@
   font-size: var(--fs-13);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .loadMoreError {
   display: flex;
   flex-direction: column;
@@ -163,6 +163,29 @@
 .loadMoreErrorText {
   font-size: var(--fs-13);
   color: #cf4444;
+}
+
+.forbiddenState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 96px 24px;
+  text-align: center;
+}
+
+.forbiddenText {
+  max-width: 420px;
+  color: var(--ink-3);
+  font-size: var(--fs-13);
+  line-height: 1.5;
+}
+
+.forbiddenBtn {
+  text-decoration: none;
+  font-size: var(--fs-15);
+  padding: 14px 28px;
 }
 
 @media (max-width: 600px) {

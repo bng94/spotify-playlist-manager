@@ -1,4 +1,5 @@
 import Button from "../../components/Button/Button";
+import PageHeader from "../../components/PageHeader/PageHeader";
 import styles from "./PrivacyScreen.module.css";
 
 interface PrivacyScreenProps {
@@ -8,10 +9,7 @@ interface PrivacyScreenProps {
 const PrivacyScreen = ({ onBack }: PrivacyScreenProps) => {
   return (
     <div>
-      <header className={styles.header}>
-        <div className={`pm-overline-section ${styles.overlineGap}`}>Legal</div>
-        <h1 className={`pm-page-title ${styles.pageTitle}`}>Privacy Policy</h1>
-      </header>
+      <PageHeader overline="Legal" title="Privacy Policy" />
 
       <div className={styles.body}>
         <div className={styles.section}>

@@ -1,5 +1,6 @@
-import { useState } from "react";
 import type { Playlist } from "../../types";
+import { useImageFallback } from "../../hooks/useImageFallback";
+import styles from "./PlaylistArt.module.css";
 
 interface PlaylistArtProps {
   playlist: Playlist;
@@ -23,36 +24,25 @@ const PlaylistArt = ({
   size = 40,
   radius = 4,
 }: PlaylistArtProps) => {
-  const [failed, setFailed] = useState(false);
   const imageUrl = playlist.images?.[0]?.url;
+  const { failed, onError } = useImageFallback(imageUrl);
   return imageUrl && !failed ? (
     <img
       src={imageUrl}
       alt={playlist.name}
-      onError={() => setFailed(true)}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: radius,
-        objectFit: "cover",
-        flexShrink: 0,
-        display: "block",
-      }}
+      onError={onError}
+      className={styles.art}
+      style={{ width: size, height: size, borderRadius: radius }}
     />
   ) : (
     <div
+      className={styles.fallback}
       style={{
         width: size,
         height: size,
         borderRadius: radius,
-        background: `linear-gradient(135deg, ${idToColor(playlist.id)}, #1a1a1a)`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        background: `linear-gradient(135deg, ${idToColor(playlist.id)}, var(--bg-surface))`,
         fontSize: size * 0.4,
-        flexShrink: 0,
-        boxShadow: "0 1px 2px rgba(0,0,0,0.4)",
-        userSelect: "none",
       }}
     >
       ♪

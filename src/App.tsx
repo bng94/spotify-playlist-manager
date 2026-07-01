@@ -10,8 +10,7 @@ import {
 import type {
   Playlist,
   PlaylistItem,
-  PlaylistTracksPage,
-  SpotifyPlaylistsPage,
+  SpotifyPage,
   SpotifyTrack,
 } from "./types";
 import {
@@ -21,7 +20,9 @@ import {
   getPlaylistWithTracks,
   spotifyFetch,
   APP_CONFIG_ERROR,
+  PLAYLIST_TRACKS_FORBIDDEN,
 } from "./lib/spotifyApi";
+import type { SpotifyResponse } from "./lib/spotifyApi";
 import { playbackPlay, playbackNext, playbackPrev } from "./lib/playbackApi";
 import { removePlaylist } from "./lib/playlistOperations";
 import { useSpotifyPlayer } from "./hooks/useSpotifyPlayer";
@@ -50,14 +51,18 @@ function PlaylistDetailRoute({
   onTracksLoad,
   onPlay,
   currentTrackId,
+  currentIndex,
+  isPaused,
 }: {
   playlists: Playlist[];
   loadingPlaylists: boolean;
   onBack: () => void;
   onRename: (id: string, name: string) => void;
   onTracksLoad: (tracks: SpotifyTrack[]) => void;
-  onPlay: (trackId: string) => void;
+  onPlay: (index: number) => void;
   currentTrackId: string;
+  currentIndex: number | undefined;
+  isPaused: boolean;
 }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,20 +75,26 @@ function PlaylistDetailRoute({
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [totalTracks, setTotalTracks] = useState(0);
+  const [tracksForbidden, setTracksForbidden] = useState(false);
 
   // Keep nowPlayingTracks in sync with all accumulated playlist items
   useEffect(() => {
     onTracksLoad(
-      playlistItems.map((pi) => pi.item).filter((t): t is SpotifyTrack => t != null),
+      playlistItems
+        .map((pi) => pi.item)
+        .filter((t): t is SpotifyTrack => t != null),
     );
   }, [playlistItems, onTracksLoad]);
 
-  const applyPage = useCallback((page: PlaylistTracksPage, append: boolean) => {
-    const newItems = page.items ?? [];
-    setPlaylistItems((prev) => (append ? [...prev, ...newItems] : newItems));
-    setNextUrl(page.next);
-    setTotalTracks(page.total);
-  }, []);
+  const applyPage = useCallback(
+    (page: SpotifyPage<PlaylistItem>, append: boolean) => {
+      const newItems = page.items ?? [];
+      setPlaylistItems((prev) => (append ? [...prev, ...newItems] : newItems));
+      setNextUrl(page.next);
+      setTotalTracks(page.total);
+    },
+    [],
+  );
 
   // Fetch first page whenever the playlist id is ready
   useEffect(() => {
@@ -91,11 +102,14 @@ function PlaylistDetailRoute({
     setPlaylistItems([]);
     setNextUrl(null);
     setLoadMoreError(false);
+    setTracksForbidden(false);
     setLoadingItems(true);
     getPlaylistWithTracks(id).then((result) => {
       setLoadingItems(false);
-      if (result.data?.tracks) {
-        applyPage(result.data.tracks, false);
+      if (result.error === PLAYLIST_TRACKS_FORBIDDEN) {
+        setTracksForbidden(true);
+      } else if (result.data?.items) {
+        applyPage(result.data.items, false);
       } else if (result.error) {
         pushError(result.error);
       }
@@ -107,7 +121,7 @@ function PlaylistDetailRoute({
     setLoadMoreError(false);
     setLoadingMore(true);
     const path = nextUrl.replace("https://api.spotify.com/v1", "");
-    const result = await spotifyFetch<PlaylistTracksPage>(path);
+    const result = await spotifyFetch<SpotifyPage<PlaylistItem>>(path);
     setLoadingMore(false);
     if (result.data) {
       applyPage(result.data, true);
@@ -136,11 +150,14 @@ function PlaylistDetailRoute({
       loadingTracks={loadingItems}
       onPlay={onPlay}
       currentTrackId={currentTrackId}
+      currentIndex={currentIndex}
+      isPaused={isPaused}
       totalTracks={totalTracks}
       hasMore={nextUrl !== null}
       loadingMore={loadingMore}
       loadMoreError={loadMoreError}
       onLoadMore={loadMore}
+      tracksForbidden={tracksForbidden}
     />
   );
 }
@@ -156,8 +173,16 @@ function App() {
   const [playlistsTotal, setPlaylistsTotal] = useState(0);
   const [playlistsOffset, setPlaylistsOffset] = useState(0);
   const [nowPlayingTracks, setNowPlayingTracks] = useState<SpotifyTrack[]>([]);
-  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
-  const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | undefined>(undefined);
+  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | undefined>(
+    undefined,
+  );
+  const [selectedPlaylistName, setSelectedPlaylistName] = useState<
+    string | undefined
+  >(undefined);
+  const [currentIndex, setCurrentIndex] = useState<number | undefined>(
+    undefined,
+  );
+  const [playbackActionError, setPlaybackActionError] = useState(false);
   const sessionFetchedRef = useRef(false);
   const { pushToast, pushError } = useToast();
   // Suppress the raw APP_CONFIG_ERROR sentinel — SpotifyApiContext already shows the human-readable message
@@ -169,7 +194,15 @@ function App() {
   );
   const { user, hasToken, callbackError, login, logout, fetchUser } = useUser();
   const { apiFetch, appConfigError } = useSpotifyApi();
-  const { deviceId, playerState, seek, togglePlay, volume, setPlayerVolume } = useSpotifyPlayer(hasToken, pushApiError);
+  const {
+    deviceId,
+    playerState,
+    playbackError,
+    seek,
+    togglePlay,
+    volume,
+    setPlayerVolume,
+  } = useSpotifyPlayer(hasToken, pushApiError);
 
   // Reset data-fetch guard whenever the session ends so re-login re-fetches
   useEffect(() => {
@@ -179,7 +212,7 @@ function App() {
   const fetchPlaylists = useCallback(
     async (offset = 0) => {
       setLoadingPlaylists(true);
-      const data = await apiFetch<SpotifyPlaylistsPage>(
+      const data = await apiFetch<SpotifyPage<Playlist>>(
         `/me/playlists?limit=${PLAYLISTS_LIMIT}&offset=${offset}`,
       );
       setPlaylists(data?.items ?? []);
@@ -236,43 +269,92 @@ function App() {
     fetchPlaylists(Math.max(0, playlistsOffset - PLAYLISTS_LIMIT));
 
   /* Playback */
-  // Update currentTrack only when we find a match — never clear it on a miss
-  // so the NowPlayingBar never disappears due to a momentary empty track list.
-  useEffect(() => {
-    const id = playerState.currentTrackId ?? selectedTrackId;
-    if (!id) return;
-    const found = nowPlayingTracks.find((t) => t.id === id);
-    if (found) setCurrentTrack(found);
-  }, [playerState.currentTrackId, selectedTrackId, nowPlayingTracks]);
+  // The SDK's live state always wins once it has reported anything; the
+  // optimistic click-time guess only fills the gap before the first
+  // player_state_changed event arrives (or if the SDK never connects).
+  const nowPlayingTrack = playerState.currentTrack ?? selectedTrack;
+  const isPlaying = nowPlayingTrack !== undefined && !playerState.isPaused;
+
+  // Playlist context isn't reliably exposed by the SDK, so capture it from
+  // whichever playlist page is open at the moment a fresh play starts —
+  // stable afterward since Next/Previous stay within that same context.
+  const openPlaylistId = location.pathname.match(/^\/playlists\/([^/]+)/)?.[1];
+  const openPlaylistName = openPlaylistId
+    ? playlists.find((p) => p.id === openPlaylistId)?.name
+    : undefined;
 
   // Clear the bar when the user logs out
   useEffect(() => {
     if (!hasToken) {
-      setCurrentTrack(undefined);
-      setSelectedTrackId(null);
+      setSelectedTrack(undefined);
+      setSelectedPlaylistName(undefined);
+      setCurrentIndex(undefined);
     }
   }, [hasToken]);
 
-  const handlePlay = async (trackId: string) => {
-    setSelectedTrackId(trackId); // always update the bar immediately
-    if (!deviceId) return; // SDK not ready — bar shows the track but no audio
+  // Natural end-of-track advance (or an external Next/Prev) isn't driven by
+  // our own handlers, so currentIndex would otherwise go stale — this only
+  // reacts when the SDK reports a genuinely different track (not on every
+  // render), so it doesn't fight the optimistic index set by handlePlay
+  // before the SDK has caught up. If the live track can't be found at all
+  // (shuffle/autoplay picked something outside the currently loaded page,
+  // or a different device took over), clear the highlight rather than
+  // leaving a stale, now-wrong row marked current.
+  //
+  // Matched by name+artist rather than id: Spotify's track relinking can
+  // report a different id for the same song (regionally-equivalent
+  // substitute), so comparing ids between the Web API list and the SDK's
+  // live track is unreliable — the name/artist stay the same either way.
+  useEffect(() => {
+    const liveTrack = playerState.currentTrack;
+    if (!liveTrack) return;
+    const keyOf = (t: { name: string; artists: { name: string }[] } | undefined) =>
+      t && `${t.name}::${t.artists[0]?.name ?? ""}`;
+    const liveKey = keyOf(liveTrack);
+    setCurrentIndex((prevIndex) => {
+      if (prevIndex === undefined) return prevIndex;
+      if (keyOf(nowPlayingTracks[prevIndex]) === liveKey) return prevIndex;
+      if (keyOf(nowPlayingTracks[prevIndex + 1]) === liveKey) return prevIndex + 1;
+      if (keyOf(nowPlayingTracks[prevIndex - 1]) === liveKey) return prevIndex - 1;
+      const found = nowPlayingTracks.findIndex((t) => keyOf(t) === liveKey);
+      return found === -1 ? undefined : found;
+    });
+  }, [playerState.currentTrack, nowPlayingTracks]);
+
+  const runPlaybackAction = async (
+    action: (deviceId: string) => Promise<SpotifyResponse<null>>,
+  ) => {
+    if (!deviceId) return;
+    setPlaybackActionError(false);
+    const result = await action(deviceId);
+    if (result.error) {
+      pushApiError(result.error);
+      setPlaybackActionError(true);
+    }
+  };
+
+  const handlePlay = (index: number) => {
+    setSelectedTrack(nowPlayingTracks[index]); // always update the bar immediately
+    setSelectedPlaylistName(openPlaylistName);
+    if (index === currentIndex) {
+      setPlaybackActionError(false);
+      togglePlay(); // already loaded in the bar — pause/resume instead of restarting
+      return;
+    }
+    setCurrentIndex(index);
     const uris = nowPlayingTracks.map((t) => t.uri);
-    const offset = nowPlayingTracks.findIndex((t) => t.id === trackId);
-    if (offset === -1) return;
-    const result = await playbackPlay(deviceId, uris, offset);
-    if (result.error) pushApiError(result.error);
+    return runPlaybackAction((deviceId) => playbackPlay(deviceId, uris, index));
   };
 
-  const handleNext = async () => {
-    if (!deviceId) return;
-    const result = await playbackNext(deviceId);
-    if (result.error) pushApiError(result.error);
+  const handleNext = () => {
+    setCurrentIndex((i) =>
+      i === undefined ? i : Math.min(i + 1, nowPlayingTracks.length - 1),
+    );
+    return runPlaybackAction(playbackNext);
   };
-
-  const handlePrev = async () => {
-    if (!deviceId) return;
-    const result = await playbackPrev(deviceId);
-    if (result.error) pushApiError(result.error);
+  const handlePrev = () => {
+    setCurrentIndex((i) => (i === undefined ? i : Math.max(i - 1, 0)));
+    return runPlaybackAction(playbackPrev);
   };
 
   // Full-screen: callback page (pathname match for local dev; ?code= match for
@@ -368,7 +450,9 @@ function App() {
                   onRename={handleRenamePlaylist}
                   onTracksLoad={setNowPlayingTracks}
                   onPlay={handlePlay}
-                  currentTrackId={playerState.currentTrackId ?? ""}
+                  currentTrackId={nowPlayingTrack?.id ?? ""}
+                  currentIndex={currentIndex}
+                  isPaused={playerState.isPaused}
                 />
               }
             />
@@ -387,9 +471,11 @@ function App() {
 
       {hasToken && (
         <NowPlayingBar
-          track={currentTrack}
-          isPlaying={playerState.currentTrackId !== null && !playerState.isPaused}
+          track={nowPlayingTrack}
+          playlistName={selectedPlaylistName}
+          isPlaying={isPlaying}
           position={playerState.position}
+          hasError={playbackError || playbackActionError}
           onTogglePlay={togglePlay}
           onPrev={handlePrev}
           onNext={handleNext}

@@ -24,15 +24,9 @@ const Button = ({
   type = "button",
   className,
 }: ButtonProps) => {
-  const cls = ["pm-btn"];
-  if (variant === "primary") cls.push("pm-btn--primary");
-  if (variant === "ghost") cls.push("pm-btn--ghost");
-  if (variant === "danger") cls.push("pm-btn--danger");
-  if (pill) cls.push("pm-btn--pill");
-  if (className) cls.push(className);
   return (
     <button
-      className={cls.join(" ")}
+      className={`pm-btn${variant !== "secondary" ? ` pm-btn--${variant}` : ""}${pill ? " pm-btn--pill" : ""}${className ? ` ${className}` : ""}`}
       type={type}
       disabled={disabled}
       onClick={onClick}

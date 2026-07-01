@@ -9,6 +9,8 @@ interface IconButtonProps {
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   color?: string;
   style?: CSSProperties;
+  className?: string;
+  filled?: boolean;
 }
 
 const IconButton = ({
@@ -18,6 +20,8 @@ const IconButton = ({
   onClick,
   color,
   style,
+  className,
+  filled,
 }: IconButtonProps) => {
   const baseColor = color ?? "var(--ink-3)";
   return (
@@ -25,10 +29,10 @@ const IconButton = ({
       aria-label={label}
       type="button"
       onClick={onClick}
-      className={styles.iconBtn}
+      className={`${styles.iconBtn}${className ? ` ${className}` : ""}`}
       style={{ "--icon-color": baseColor, ...style } as CSSProperties}
     >
-      <Icon name={icon} size={size} />
+      <Icon name={icon} size={size} filled={filled} />
     </button>
   );
 };

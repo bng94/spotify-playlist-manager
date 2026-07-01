@@ -22,6 +22,7 @@
 }
 
 .indexCell {
+  position: relative;
   font-size: var(--fs-12);
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
@@ -31,26 +32,36 @@
   justify-content: center;
 }
 
-.playIcon {
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.row:hover .playIcon {
-  display: flex;
+.indexNum {
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .row:hover .indexNum {
-  display: none;
+  opacity: 0;
 }
 
-.indexCell.current .playIcon {
+.indexPlayBtn,
+.indexHoverPlayBtn {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 
-.indexCell.current .indexNum {
-  display: none;
+.indexHoverPlayBtn {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.row:hover .indexHoverPlayBtn {
+  opacity: 1;
 }
 
 .titleCell {
@@ -59,6 +70,10 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+.thumbWrap {
+  flex-shrink: 0;
 }
 
 .albumThumb {

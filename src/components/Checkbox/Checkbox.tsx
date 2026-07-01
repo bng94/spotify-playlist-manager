@@ -6,6 +6,7 @@ interface CheckboxProps {
   onChange?: (checked: boolean) => void;
   label?: string;
   style?: CSSProperties;
+  className?: string;
 }
 
 const Checkbox = ({
@@ -14,17 +15,15 @@ const Checkbox = ({
   onChange,
   label,
   style,
+  className,
 }: CheckboxProps) => {
-  const cls = ["pm-checkbox"];
-  if (indeterminate) cls.push("pm-checkbox--indeterminate");
-  else if (checked) cls.push("pm-checkbox--checked");
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={indeterminate ? "mixed" : checked}
       aria-label={label}
-      className={cls.join(" ")}
+      className={`pm-checkbox${indeterminate ? " pm-checkbox--indeterminate" : checked ? " pm-checkbox--checked" : ""}${className ? ` ${className}` : ""}`}
       onClick={(e) => {
         e.stopPropagation();
         onChange?.(!checked);

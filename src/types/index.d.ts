@@ -50,7 +50,10 @@ export interface Playlist {
   owner: PlaylistOwner;
   public: boolean;
   snapshot_id: string;
-  tracks?: PlaylistTracksPage | null;
+  /**
+   * items are the tracks stored in the playlist. This is the track list
+   */
+  items?: SpotifyPage<PlaylistItem> | null;
   type: string;
   uri: string;
 }
@@ -127,14 +130,17 @@ export interface PlaylistItem {
   video_thumbnail: { url: string | null };
 }
 
-export interface PlaylistTracksPage {
-  href: string;
+// Shared shape of every Spotify paginated list endpoint (playlists, playlist
+// items, top artists/tracks, etc). Fields are optional where the API can
+// omit them (e.g. a playlist's embedded items summary only has href/total).
+export interface SpotifyPage<T> {
+  href?: string;
   total: number;
   limit?: number;
   next: string | null;
-  previous: string | null;
+  previous?: string | null;
   offset?: number;
-  items?: PlaylistItem[];
+  items?: T[];
 }
 
 export interface TopArtist {
@@ -148,13 +154,13 @@ export interface TopArtist {
   popularity: number;
 }
 
-export interface SpotifyPlaylistsPage {
-  href: string;
-  limit: number;
-  next: string | null;
-  previous: string | null;
-  offset: number;
-  total: number;
-  items: Playlist[];
+// Minimal track shape for the now-playing bar. Satisfied both by the
+// Spotify Web Playback SDK's live track_window.current_track and by a full
+// SpotifyTrack (a structural superset), so either can be displayed as-is.
+export interface NowPlayingTrack {
+  id: string;
+  name: string;
+  duration_ms: number;
+  artists: { name: string }[];
+  album: { name: string; images: { url: string }[] };
 }
-

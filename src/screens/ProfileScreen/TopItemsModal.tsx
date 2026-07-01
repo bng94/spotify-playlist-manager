@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getTopArtists, getTopTracks } from "../../lib/spotifyApi";
 import type { TimeRange } from "../../lib/spotifyApi";
 import type { TopArtist, SpotifyTrack } from "../../types";
@@ -102,22 +102,25 @@ function TopItemsModal({ type, onClose }: TopItemsModalProps) {
 
   const fetchedRef = useRef<Set<TimeRange>>(new Set());
 
-  const fetchTab = useCallback(async (range: TimeRange) => {
-    if (fetchedRef.current.has(range)) return;
-    fetchedRef.current.add(range);
-    setCache((prev) => ({ ...prev, [range]: { items: [], loading: true } }));
-    const res = type === "artists"
-      ? await getTopArtists(range, 10)
-      : await getTopTracks(range, 10);
-    setCache((prev) => ({
-      ...prev,
-      [range]: { items: res.data?.items ?? [], loading: false },
-    }));
-  }, [type]);
-
   useEffect(() => {
-    fetchTab(activeTab);
-  }, [activeTab, fetchTab]);
+    if (fetchedRef.current.has(activeTab)) return;
+    fetchedRef.current.add(activeTab);
+    let cancelled = false;
+    setCache((prev) => ({ ...prev, [activeTab]: { items: [], loading: true } }));
+    (async () => {
+      const res = type === "artists"
+        ? await getTopArtists(activeTab, 10)
+        : await getTopTracks(activeTab, 10);
+      if (cancelled) return;
+      setCache((prev) => ({
+        ...prev,
+        [activeTab]: { items: res.data?.items ?? [], loading: false },
+      }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, type]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

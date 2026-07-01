@@ -1,8 +1,8 @@
-import { useState } from "react";
 import type { PlaylistItem } from "../../../types";
 import { formatDuration } from "../../../lib/playlistOperations";
+import { useImageFallback } from "../../../hooks/useImageFallback";
 import Checkbox from "../../../components/Checkbox/Checkbox";
-import IconButton from "../../../components/IconButton/IconButton";
+import Icon from "../../../components/Icon/Icon";
 import SpotifyLink from "../../../components/SpotifyLink/SpotifyLink";
 import styles from "./TrackRow.module.css";
 
@@ -11,8 +11,9 @@ interface TrackRowProps {
   index: number;
   selected: boolean;
   isCurrent: boolean;
+  isPaused: boolean;
   onSelect: (id: string) => void;
-  onPlay: (id: string) => void;
+  onPlay: (index: number) => void;
 }
 
 const formatAddedAt = (iso: string): string =>
@@ -27,15 +28,17 @@ const TrackRow = ({
   index,
   selected,
   isCurrent,
+  isPaused,
   onSelect,
   onPlay,
 }: TrackRowProps) => {
-  const [thumbFailed, setThumbFailed] = useState(false);
   const id = track.item?.id ?? "";
   const title = track.item?.name ?? "";
   const artist = track.item?.artists.map((a) => a.name).join(", ") ?? "";
   const album = track.item?.album.name;
   const albumThumb = track.item?.album.images.at(-1)?.url;
+  const { failed: thumbFailed, onError: handleThumbError } =
+    useImageFallback(albumThumb);
   const duration = track.item ? formatDuration(track.item.duration_ms) : "—";
   const addedAt = track.added_at ? formatAddedAt(track.added_at) : "—";
 
@@ -48,35 +51,58 @@ const TrackRow = ({
       />
 
       <div className={`${styles.indexCell} ${isCurrent ? styles.current : ""}`}>
-        <span className={styles.indexNum}>{index + 1}</span>
-        <span className={styles.playIcon}>
-          <IconButton
-            icon={isCurrent ? "volume" : "player-play"}
-            size={14}
-            color={isCurrent ? "var(--pm-green)" : "var(--ink-1)"}
-            label={`Play ${title}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onPlay(id);
-            }}
-            style={{ padding: 2 }}
-          />
-        </span>
+        {isCurrent ? (
+          <button
+            type="button"
+            className={styles.indexPlayBtn}
+            aria-label={isPaused ? `Play ${title}` : `Pause ${title}`}
+            onClick={() => onPlay(index)}
+          >
+            <Icon
+              name={isPaused ? "player-play" : "player-pause"}
+              size={14}
+              color="var(--pm-green)"
+            />
+          </button>
+        ) : (
+          <>
+            <span className={styles.indexNum}>{index + 1}</span>
+            <button
+              type="button"
+              className={styles.indexHoverPlayBtn}
+              aria-label={`Play ${title}`}
+              onClick={() => onPlay(index)}
+            >
+              <Icon name="player-play" size={14} color="var(--ink-1)" />
+            </button>
+          </>
+        )}
       </div>
 
       <div className={styles.titleCell}>
-        {albumThumb && !thumbFailed ? (
-          <img src={albumThumb} alt="" className={styles.albumThumb} onError={() => setThumbFailed(true)} />
-        ) : (
-          <div className={styles.albumThumb} />
-        )}
+        <div className={styles.thumbWrap}>
+          {albumThumb && !thumbFailed ? (
+            <img
+              src={albumThumb}
+              alt=""
+              className={styles.albumThumb}
+              onError={handleThumbError}
+            />
+          ) : (
+            <div className={styles.albumThumb} />
+          )}
+        </div>
         <div className={styles.titleMeta}>
           <div className={`${styles.titleRow} pm-truncate`}>
-            <span className={`${styles.title} ${isCurrent ? styles.current : ""}`}>
+            <span
+              className={`${styles.title} ${isCurrent ? styles.current : ""}`}
+            >
               {title}
             </span>
             {track.item?.explicit && (
-              <span className={styles.explicit} aria-label="Explicit">E</span>
+              <span className={styles.explicit} aria-label="Explicit">
+                E
+              </span>
             )}
           </div>
           <div className={`${styles.artist} pm-truncate`}>{artist}</div>

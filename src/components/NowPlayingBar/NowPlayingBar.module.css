@@ -5,19 +5,32 @@
   bottom: 0;
   background: var(--bg-player);
   border-top: 0.5px solid var(--border-subtle);
-  padding: 0 24px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(320px, 722px) minmax(
+      200px,
+      1fr
+    );
+  align-items: center;
+  column-gap: 16px;
   z-index: var(--z-player);
 }
 
-/* Progress row sits at the very top of the bar */
+/* Center column stacks the transport buttons above the seek bar, mirroring
+   Spotify's own player layout */
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .progressRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-top: 12px;
+  width: 100%;
 }
 
 .timeLabel {
@@ -65,19 +78,12 @@
   margin: 0;
 }
 
-/* Main controls row */
-.controls {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 16px;
-}
-
 .trackInfo {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  justify-self: start;
 }
 
 .albumArt {
@@ -90,6 +96,18 @@
 
 .trackMeta {
   min-width: 0;
+}
+
+.playlistLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  min-width: 0;
+  max-width: 200px;
 }
 
 .trackTitle {
@@ -108,6 +126,16 @@
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.spotifyFallbackBtn {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.disabledTrack {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .playBtn {
@@ -141,6 +169,8 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  justify-self: end;
+  min-width: 0;
 }
 
 .volumeControl {
@@ -187,11 +217,8 @@
 
 @media (max-width: 600px) {
   .bar {
-    padding: 0 16px 12px;
-  }
-
-  .controls {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) minmax(140px, 2fr);
+    padding: 8px 16px;
   }
 
   .secondaryControls {

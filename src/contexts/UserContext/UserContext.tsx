@@ -115,9 +115,9 @@ const UserProvider = ({ children }: { children: ReactNode }) => {
   }, [location.pathname, location.search, navigate]);
 
   return (
-    <UserContext.Provider value={{ user, hasToken, callbackError, login, logout, fetchUser }}>
+    <UserContext value={{ user, hasToken, callbackError, login, logout, fetchUser }}>
       {children}
-    </UserContext.Provider>
+    </UserContext>
   );
 };
 

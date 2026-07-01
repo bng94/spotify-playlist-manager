@@ -1,41 +1,10 @@
 import { useState } from "react";
 import type { Playlist } from "../../types";
 import Button from "../../components/Button/Button";
-import Modal from "../../components/Modal/Modal";
+import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
+import PageHeader from "../../components/PageHeader/PageHeader";
 import PlaylistCard from "./PlaylistCard/PlaylistCard";
 import styles from "./PlaylistsScreen.module.css";
-
-const SKELETON_WIDTHS: [string, string][] = [
-  ["60%", "35%"],
-  ["45%", "28%"],
-  ["70%", "40%"],
-  ["50%", "30%"],
-  ["55%", "25%"],
-];
-
-const SkeletonRow = ({
-  nameWidth,
-  subWidth,
-}: {
-  nameWidth: string;
-  subWidth: string;
-}) => {
-  return (
-    <div className={styles.skeletonRow}>
-      <div className={`pm-skeleton ${styles.skeletonArt}`} />
-      <div className={styles.skeletonMeta}>
-        <div
-          className={`pm-skeleton ${styles.skeletonName}`}
-          style={{ width: nameWidth }}
-        />
-        <div
-          className={`pm-skeleton ${styles.skeletonSub}`}
-          style={{ width: subWidth }}
-        />
-      </div>
-    </div>
-  );
-};
 
 interface PlaylistsScreenProps {
   loading: boolean;
@@ -67,36 +36,33 @@ const PlaylistsScreen = ({
 
   return (
     <div>
-      <header className={styles.header}>
-        <div>
-          <div className={`pm-overline-section ${styles.overlineGap}`}>
-            Library
+      <PageHeader
+        overline="Library"
+        title="Your playlists"
+        action={
+          <Button
+            variant="primary"
+            icon="plus"
+            onClick={onCreate}
+            disabled={loading}
+          >
+            New playlist
+          </Button>
+        }
+      >
+        {!loading && (
+          <div className={styles.count}>
+            {showPagination
+              ? `${offset + 1}–${offset + playlists.length} of ${total} playlists`
+              : `${playlists.length} ${playlists.length === 1 ? "playlist" : "playlists"}`}
           </div>
-          <h1 className={`pm-page-title ${styles.pageTitle}`}>
-            Your playlists
-          </h1>
-          {!loading && (
-            <div className={styles.count}>
-              {showPagination
-                ? `${offset + 1}–${offset + playlists.length} of ${total} playlists`
-                : `${playlists.length} ${playlists.length === 1 ? "playlist" : "playlists"}`}
-            </div>
-          )}
-        </div>
-        <Button
-          variant="primary"
-          icon="plus"
-          onClick={onCreate}
-          disabled={loading}
-        >
-          New playlist
-        </Button>
-      </header>
+        )}
+      </PageHeader>
 
       {loading ? (
         <div className={`pm-surface-card ${styles.list}`}>
-          {SKELETON_WIDTHS.map(([nameWidth, subWidth], i) => (
-            <SkeletonRow key={i} nameWidth={nameWidth} subWidth={subWidth} />
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className={`${styles.skeletonRow} pm-skeleton`} />
           ))}
         </div>
       ) : playlists.length === 0 ? (
@@ -111,9 +77,7 @@ const PlaylistsScreen = ({
               key={p.id}
               playlist={p}
               onOpen={onOpen}
-              onDelete={(id) =>
-                setPendingDelete(playlists.find((pl) => pl.id === id) ?? null)
-              }
+              onDelete={() => setPendingDelete(p)}
             />
           ))}
         </div>
@@ -131,39 +95,30 @@ const PlaylistsScreen = ({
       )}
 
       {pendingDelete && (
-        <Modal
+        <ConfirmModal
           title="Delete playlist"
-          onClose={() => setPendingDelete(null)}
-          actions={
+          confirmLabel="Delete"
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            onDelete(pendingDelete.id);
+            setPendingDelete(null);
+          }}
+          message={
             <>
-              <Button onClick={() => setPendingDelete(null)}>Cancel</Button>
-              <Button
-                variant="danger"
-                icon="trash"
-                onClick={() => {
-                  onDelete(pendingDelete.id);
-                  setPendingDelete(null);
-                }}
+              Are you sure you want to delete{" "}
+              <strong>"{pendingDelete.name}"</strong>? You can recover it
+              within 90 days at{" "}
+              <a
+                href="https://www.spotify.com/us/account/recover-playlists/"
+                target="_blank"
+                rel="noreferrer"
               >
-                Delete
-              </Button>
+                spotify.com/account/recover-playlists
+              </a>
+              .
             </>
           }
-        >
-          <p>
-            Are you sure you want to delete{" "}
-            <strong>"{pendingDelete.name}"</strong>? You can recover it within
-            90 days at{" "}
-            <a
-              href="https://www.spotify.com/us/account/recover-playlists/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              spotify.com/account/recover-playlists
-            </a>
-            .
-          </p>
-        </Modal>
+        />
       )}
     </div>
   );

@@ -1,4 +1,10 @@
-import type { Playlist, SpotifyTrack, TopArtist } from "../types";
+import type {
+  Playlist,
+  PlaylistItem,
+  SpotifyPage,
+  SpotifyTrack,
+  TopArtist,
+} from "../types";
 import { refreshAccessToken } from "./spotifyAuth";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
@@ -69,7 +75,7 @@ export const spotifyFetch = async <T>(
     const error =
       status === 403 && text.includes(OWNER_PREMIUM_MESSAGE)
         ? APP_CONFIG_ERROR
-        : `Error ${status}: ${errorData?.error?.message || text || ` Request failed`}`;
+        : `Error ${status}: ${errorData?.error?.message || text || "Request failed"}`;
     return { status, data: null, error };
   }
 
@@ -77,19 +83,41 @@ export const spotifyFetch = async <T>(
   return { status, data, error: null };
 };
 
+// Spotify returns 403 for the tracks/items sub-resource of a playlist owned
+// by a user outside this app's Development Mode allowlist, even though the
+// playlist's own metadata (name, images, totals) is still readable.
+export const PLAYLIST_TRACKS_FORBIDDEN = "playlist-tracks-forbidden";
+
 export const getPlaylistWithTracks = async (
   playlistId: string,
-): Promise<{
-  status: number;
-  data: Playlist | null;
-  error: string | null;
-}> => {
+): Promise<SpotifyResponse<Playlist>> => {
   const result = await spotifyFetch<Playlist>(`/playlists/${playlistId}`);
   if (result.error || !result.data) {
     return { status: result.status, data: null, error: result.error };
   }
 
   const data = result.data;
+
+  // GET /playlists/{id} doesn't inline the track list — it either omits the
+  // `items` field entirely or (per the list endpoint's shape) includes just
+  // an `href` + `total` summary. Either way, fetch the first page of tracks
+  // separately: from that href when present, or the default items endpoint.
+  if (!data.items?.items?.length) {
+    const path = data.items?.href
+      ? data.items.href.replace(SPOTIFY_API_BASE, "")
+      : `/playlists/${playlistId}/items`;
+    const tracksResult = await spotifyFetch<SpotifyPage<PlaylistItem>>(path);
+    if (tracksResult.data) {
+      data.items = tracksResult.data;
+    } else if (tracksResult.status === 403) {
+      // Deliberately returns both `data` and `error` — unlike every other
+      // branch in this file — so the UI can still show the playlist's name,
+      // art, and total even though its tracks are forbidden.
+      return { status: 403, data, error: PLAYLIST_TRACKS_FORBIDDEN };
+    } else if (tracksResult.error) {
+      return { status: tracksResult.status, data: null, error: tracksResult.error };
+    }
+  }
 
   return { status: result.status, data, error: null };
 };
@@ -161,20 +189,12 @@ export const addTracksToPlaylist = (
 
 export type TimeRange = "long_term" | "medium_term" | "short_term";
 
-interface TopItemsPage<T> {
-  items: T[];
-  next: string | null;
-  total: number;
-  limit: number;
-  offset: number;
-}
-
 export const getTopArtists = (timeRange: TimeRange, limit = 50, offset = 0) =>
-  spotifyFetch<TopItemsPage<TopArtist>>(
+  spotifyFetch<SpotifyPage<TopArtist>>(
     `/me/top/artists?time_range=${timeRange}&limit=${limit}&offset=${offset}`,
   );
 
 export const getTopTracks = (timeRange: TimeRange, limit = 50, offset = 0) =>
-  spotifyFetch<TopItemsPage<SpotifyTrack>>(
+  spotifyFetch<SpotifyPage<SpotifyTrack>>(
     `/me/top/tracks?time_range=${timeRange}&limit=${limit}&offset=${offset}`,
   );

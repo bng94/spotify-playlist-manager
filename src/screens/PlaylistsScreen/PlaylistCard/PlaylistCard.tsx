@@ -10,12 +10,8 @@ interface PlaylistCardProps {
   onDelete: (id: string) => void;
 }
 
-const PlaylistCard = ({
-  playlist,
-  onOpen,
-  onDelete,
-}: PlaylistCardProps) => {
-  const trackTotal = playlist.tracks?.total ?? null;
+const PlaylistCard = ({ playlist, onOpen, onDelete }: PlaylistCardProps) => {
+  const trackTotal = playlist.items?.total ?? null;
 
   return (
     <div className={styles.card} onClick={() => onOpen(playlist.id)}>

@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { refreshAccessToken } from "../lib/spotifyAuth";
+import type { NowPlayingTrack } from "../types";
 
 interface SpotifyPlayerState {
   isPaused: boolean;
-  currentTrackId: string | null;
+  currentTrack: NowPlayingTrack | null;
   position: number;
 }
 
 export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => void) {
   const playerRef = useRef<Spotify.Player | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [playbackError, setPlaybackError] = useState(false);
   const [playerState, setPlayerState] = useState<SpotifyPlayerState>({
     isPaused: true,
-    currentTrackId: null,
+    currentTrack: null,
     position: 0,
   });
 
@@ -28,7 +30,7 @@ export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => vo
       setPlayerState((prev) => ({ ...prev, position: estimated }));
     }, 500);
     return () => clearInterval(interval);
-  }, [playerState.isPaused, playerState.currentTrackId]);
+  }, [playerState.isPaused, playerState.currentTrack?.id]);
 
   // Prevents duplicate toasts when authentication_error fires and connect() also
   // resolves to false for the same root cause (e.g. Firefox ETP blocking SDK connections).
@@ -39,6 +41,7 @@ export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => vo
 
     const init = () => {
       sdkErrorRef.current = false;
+      setPlaybackError(false);
 
       const player = new window.Spotify.Player({
         name: "Spotify Playlist Manager",
@@ -54,16 +57,28 @@ export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => vo
         volume: Number(localStorage.getItem("player_volume") ?? 0.5),
       });
 
-      player.addListener("ready", ({ device_id }) => setDeviceId(device_id));
+      player.addListener("ready", ({ device_id }) => {
+        setDeviceId(device_id);
+        setPlaybackError(false);
+      });
 
       player.addListener("not_ready", () => setDeviceId(null));
 
       player.addListener("player_state_changed", (state) => {
         if (!state) return;
         positionRef.current = { position: state.position, at: Date.now() };
+        const track = state.track_window.current_track;
         setPlayerState({
           isPaused: state.paused,
-          currentTrackId: state.track_window.current_track.id ?? null,
+          currentTrack: track.id
+            ? {
+                id: track.id,
+                name: track.name,
+                duration_ms: track.duration_ms,
+                artists: track.artists.map((a) => ({ name: a.name })),
+                album: { name: track.album.name, images: track.album.images },
+              }
+            : null,
           position: state.position,
         });
       });
@@ -72,6 +87,7 @@ export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => vo
         console.error("[Spotify SDK] initialization_error:", message);
         if (sdkErrorRef.current) return;
         sdkErrorRef.current = true;
+        setPlaybackError(true);
         const isDrm = message.toLowerCase().includes("failed to initialize");
         onError?.(
           isDrm
@@ -83,6 +99,7 @@ export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => vo
         console.error("[Spotify SDK] authentication_error:", message);
         if (sdkErrorRef.current) return;
         sdkErrorRef.current = true;
+        setPlaybackError(true);
         const isFirefox = navigator.userAgent.includes("Firefox");
         onError?.(
           isFirefox
@@ -94,12 +111,14 @@ export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => vo
         console.error("[Spotify SDK] account_error:", message);
         if (sdkErrorRef.current) return;
         sdkErrorRef.current = true;
+        setPlaybackError(true);
         onError?.("Spotify Premium is required for in-browser audio playback.");
       });
 
       player.connect().then((success) => {
         if (!success && !sdkErrorRef.current) {
           sdkErrorRef.current = true;
+          setPlaybackError(true);
           onError?.("Spotify player failed to connect — try refreshing.");
         }
       });
@@ -116,6 +135,8 @@ export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => vo
     return () => {
       playerRef.current?.disconnect();
       playerRef.current = null;
+      setDeviceId(null);
+      setPlayerState({ isPaused: true, currentTrack: null, position: 0 });
     };
   }, [enabled, onError]);
 
@@ -137,5 +158,5 @@ export function useSpotifyPlayer(enabled: boolean, onError?: (msg: string) => vo
     playerRef.current?.setVolume(v);
   }, []);
 
-  return { deviceId, playerState, seek, togglePlay, volume, setPlayerVolume };
+  return { deviceId, playerState, playbackError, seek, togglePlay, volume, setPlayerVolume };
 }

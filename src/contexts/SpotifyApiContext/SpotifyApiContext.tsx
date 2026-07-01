@@ -48,9 +48,9 @@ const SpotifyApiProvider = ({ children }: { children: ReactNode }) => {
   );
 
   return (
-    <SpotifyApiContext.Provider value={value}>
+    <SpotifyApiContext value={value}>
       {children}
-    </SpotifyApiContext.Provider>
+    </SpotifyApiContext>
   );
 };
 

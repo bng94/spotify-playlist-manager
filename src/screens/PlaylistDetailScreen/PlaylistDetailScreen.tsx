@@ -12,7 +12,7 @@ import { useToast } from "../../contexts/ToastContext/ToastContext";
 import Button from "../../components/Button/Button";
 import Checkbox from "../../components/Checkbox/Checkbox";
 import Icon from "../../components/Icon/Icon";
-import Modal from "../../components/Modal/Modal";
+import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
 import PlaylistArt from "../../components/PlaylistArt/PlaylistArt";
 import TrackRow from "./TrackRow/TrackRow";
 import SearchPanel from "./SearchPanel/SearchPanel";
@@ -24,13 +24,16 @@ interface PlaylistDetailScreenProps {
   loadingTracks: boolean;
   onBack: () => void;
   onRename: (name: string) => void;
-  onPlay: (id: string) => void;
+  onPlay: (index: number) => void;
   currentTrackId: string;
+  currentIndex: number | undefined;
+  isPaused: boolean;
   totalTracks: number;
   hasMore: boolean;
   loadingMore: boolean;
   loadMoreError: boolean;
   onLoadMore: () => void;
+  tracksForbidden: boolean;
 }
 
 const trackToPlaylistItem = (track: SpotifyTrack): PlaylistItem => ({
@@ -48,17 +51,6 @@ const trackToPlaylistItem = (track: SpotifyTrack): PlaylistItem => ({
   video_thumbnail: { url: null },
 });
 
-function totalDuration(items: PlaylistItem[]): string {
-  const totalMs = items.reduce(
-    (sum, pi) => sum + (pi.item?.duration_ms ?? 0),
-    0,
-  );
-  const totalSec = Math.floor(totalMs / 1000);
-  const hours = Math.floor(totalSec / 3600);
-  const minutes = Math.round((totalSec % 3600) / 60);
-  return hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`;
-}
-
 const PlaylistDetailScreen = ({
   playlist,
   items,
@@ -67,11 +59,14 @@ const PlaylistDetailScreen = ({
   onRename,
   onPlay,
   currentTrackId,
+  currentIndex,
+  isPaused,
   totalTracks,
   hasMore,
   loadingMore,
   loadMoreError,
   onLoadMore,
+  tracksForbidden,
 }: PlaylistDetailScreenProps) => {
   const { pushToast, pushError } = useToast();
   const [tracks, setTracks] = useState<PlaylistItem[]>(items);
@@ -85,7 +80,9 @@ const PlaylistDetailScreen = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Trigger loadMore when the sentinel scrolls into view
+  const totalTrack =
+    totalTracks === 0 ? (playlist.items?.total ?? 0) : totalTracks;
+
   useEffect(() => {
     const el = bottomRef.current;
     if (!el || !hasMore || loadingMore || loadingTracks) return;
@@ -99,7 +96,6 @@ const PlaylistDetailScreen = ({
     return () => observer.disconnect();
   }, [hasMore, loadingMore, loadingTracks, onLoadMore]);
 
-  // Sync local track list when the parent fetches a new playlist
   useEffect(() => {
     setTracks(items);
     setSelection(new Set());
@@ -124,11 +120,25 @@ const PlaylistDetailScreen = ({
     [tracks],
   );
 
+  // App.tsx's nowPlayingTracks (used to build play requests) only contains
+  // tracks with a playable item, so a row's onPlay index must be its
+  // position in that filtered list, not its raw position in `tracks` —
+  // otherwise any null-item track (local/unavailable) before it would
+  // shift every index after it out of sync with what actually gets played.
+  const playableIndexes = useMemo(() => {
+    let next = 0;
+    return tracks.map((t) => (t.item ? next++ : -1));
+  }, [tracks]);
+
   const anyChecked = selection.size > 0;
   const allChecked = selection.size > 0 && selection.size === tracks.length;
   const someChecked = selection.size > 0 && !allChecked;
 
   const toggleAll = () => {
+    if (tracks.length === 0) {
+      setSelection(new Set());
+      return;
+    }
     if (anyChecked) setSelection(new Set());
     else
       setSelection(
@@ -226,133 +236,164 @@ const PlaylistDetailScreen = ({
           <div className={styles.trackCount}>
             {loadingTracks
               ? "Loading…"
-              : `${totalTracks} ${totalTracks === 1 ? "song" : "songs"} · about ${totalDuration(tracks)}`}
+              : `${totalTrack} ${totalTrack === 1 ? "song" : "songs"}`}
           </div>
         </div>
-      </div>
-
-      <div className={styles.actionBar}>
-        <Button icon={anyChecked ? "square" : "check"} onClick={toggleAll}>
-          {anyChecked ? "Deselect all" : "Select all"}
-        </Button>
-        <Button
-          variant="primary"
-          icon="trash"
-          disabled={selection.size === 0}
-          onClick={() => setConfirmRemove(true)}
-        >
-          Remove selected ({selection.size})
-        </Button>
-        <Button
-          icon="search"
-          onClick={() => setSearchOpen(true)}
-          style={{ marginLeft: "auto" }}
-        >
-          Add songs
-        </Button>
-      </div>
-
-      {!loadingTracks && tracks.length === 0 ? (
-        <div className={styles.emptyTracks}>
-          No songs yet.{" "}
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            className={styles.addSomeBtn}
+        {!tracksForbidden && playlist.external_urls.spotify && (
+          <a
+            href={playlist.external_urls.spotify}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`pm-btn pm-btn--primary pm-btn--pill ${styles.headerSpotifyBtn}`}
+            aria-label={`Open ${playlist.name} on Spotify`}
           >
-            Add some.
-          </button>
+            Open playlist on Spotify
+          </a>
+        )}
+      </div>
+
+      {tracksForbidden ? (
+        <div className={styles.forbiddenState}>
+          <p className={styles.forbiddenText}>
+            Spotify won't let this app read the songs in{" "}
+            <strong>"{playlist.name}"</strong> since it belongs to another user.
+            You can still view it directly on Spotify.
+          </p>
+          <a
+            href={playlist.external_urls.spotify}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`pm-btn pm-btn--primary pm-btn--pill ${styles.forbiddenBtn}`}
+          >
+            Open on Spotify
+          </a>
         </div>
       ) : (
         <>
-          <div className={styles.tableHeader}>
-            <Checkbox
-              checked={allChecked}
-              indeterminate={someChecked}
-              onChange={() => toggleAll()}
-              label="Select all"
-            />
-            <div className={styles.colCenter}>#</div>
-            <div>Title</div>
-            <div>Album</div>
-            <div>Date added</div>
-            <div className={styles.colRight}>Duration</div>
-            <div />
-          </div>
-
-          {loadingTracks ? (
-            <div className={styles.skeletonList}>
-              {Array.from({ length: 6 }, (_, i) => (
-                <div key={i} className={styles.skeletonRow} />
-              ))}
-            </div>
-          ) : (
-            <div className={styles.trackList}>
-              {tracks.map((track, i) => (
-                <TrackRow
-                  key={i}
-                  track={track}
-                  index={i}
-                  selected={selection.has(track.item?.id ?? "")}
-                  isCurrent={track.item?.id === currentTrackId}
-                  onSelect={toggleOne}
-                  onPlay={onPlay}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Infinite-scroll sentinel — IntersectionObserver fires onLoadMore when this enters view */}
-      <div ref={bottomRef} />
-      {loadingMore && (
-        <div className={styles.loadMoreIndicator}>Loading more songs…</div>
-      )}
-      {loadMoreError && !loadingMore && (
-        <div className={styles.loadMoreError}>
-          <span className={styles.loadMoreErrorText}>
-            Failed to fetch next tracks
-          </span>
-          <Button onClick={onLoadMore}>Try again</Button>
-        </div>
-      )}
-
-      <SearchPanel
-        open={searchOpen}
-        playlistName={playlist.name}
-        existingIds={existingIds}
-        onAdd={handleAddTrack}
-        onClose={() => setSearchOpen(false)}
-      />
-
-      {confirmRemove && (
-        <Modal
-          title={`Remove ${selection.size} ${selection.size === 1 ? "song" : "songs"}?`}
-          onClose={() => setConfirmRemove(false)}
-          actions={
-            <>
-              <Button onClick={() => setConfirmRemove(false)}>Cancel</Button>
+          <div className={styles.actionBar}>
+            <Button
+              icon={anyChecked ? "square" : "check"}
+              onClick={toggleAll}
+              disabled={tracks.length === 0}
+            >
+              {anyChecked ? "Deselect all" : "Select all"}
+            </Button>
+            {selection.size !== 0 && (
               <Button
                 variant="danger"
                 icon="trash"
-                onClick={() => {
-                  setConfirmRemove(false);
-                  handleRemove();
-                }}
+                onClick={() => setConfirmRemove(true)}
               >
-                Remove
+                Remove selected ({selection.size})
               </Button>
+            )}
+            <Button
+              icon="search"
+              onClick={() => setSearchOpen(true)}
+              style={{ marginLeft: "auto" }}
+            >
+              Add songs
+            </Button>
+          </div>
+
+          {!loadingTracks && tracks.length === 0 ? (
+            <div className={styles.emptyTracks}>
+              No songs yet.{" "}
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className={styles.addSomeBtn}
+              >
+                Add some.
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className={styles.tableHeader}>
+                <Checkbox
+                  checked={allChecked}
+                  indeterminate={someChecked}
+                  onChange={() => toggleAll()}
+                  label="Select all"
+                />
+                <div className={styles.colCenter}>#</div>
+                <div>Title</div>
+                <div>Album</div>
+                <div>Date added</div>
+                <div className={styles.colRight}>Duration</div>
+                <div />
+              </div>
+
+              {loadingTracks ? (
+                <div className={styles.skeletonList}>
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <div key={i} className={styles.skeletonRow} />
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.trackList}>
+                  {tracks.map((track, i) => (
+                    <TrackRow
+                      key={i}
+                      track={track}
+                      index={playableIndexes[i]}
+                      selected={selection.has(track.item?.id ?? "")}
+                      isCurrent={
+                        currentIndex !== undefined
+                          ? playableIndexes[i] === currentIndex
+                          : track.item?.id === currentTrackId
+                      }
+                      isPaused={isPaused}
+                      onSelect={toggleOne}
+                      onPlay={onPlay}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          <div ref={bottomRef} />
+          {loadingMore && (
+            <div className={styles.loadMoreIndicator}>Loading more songs…</div>
+          )}
+          {loadMoreError && !loadingMore && (
+            <div className={styles.loadMoreError}>
+              <span className={styles.loadMoreErrorText}>
+                Failed to fetch next tracks
+              </span>
+              <Button onClick={onLoadMore}>Try again</Button>
+            </div>
+          )}
+
+          <SearchPanel
+            open={searchOpen}
+            playlistName={playlist.name}
+            existingIds={existingIds}
+            onAdd={handleAddTrack}
+            onClose={() => setSearchOpen(false)}
+          />
+        </>
+      )}
+
+      {confirmRemove && (
+        <ConfirmModal
+          title={`Remove ${selection.size} ${selection.size === 1 ? "song" : "songs"}?`}
+          confirmLabel="Remove"
+          onCancel={() => setConfirmRemove(false)}
+          onConfirm={() => {
+            setConfirmRemove(false);
+            handleRemove();
+          }}
+          message={
+            <>
+              {selection.size === 1 ? "This song" : "These songs"} will be
+              removed from <strong>"{playlist.name}"</strong>. You'll have to
+              search and re-add {selection.size === 1 ? "it" : "them"} manually
+              if you change your mind.
             </>
           }
-        >
-          <p>
-            {selection.size === 1 ? "This song" : "These songs"} will be removed
-            from <strong>"{playlist.name}"</strong>. You'll have to search and
-            re-add {selection.size === 1 ? "it" : "them"} manually if you change
-            your mind.
-          </p>
-        </Modal>
+        />
       )}
     </div>
   );

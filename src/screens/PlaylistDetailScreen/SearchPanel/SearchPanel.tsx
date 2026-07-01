@@ -23,7 +23,7 @@ const SearchPanel = ({
   const { pushError } = useToast();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SpotifyTrack[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingResults, setLoadingResults] = useState(false);
   const [addedThisSession, setAddedThisSession] = useState(new Set<string>());
 
   useEffect(() => {
@@ -31,14 +31,19 @@ const SearchPanel = ({
       setResults([]);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
-      setLoading(true);
+      setLoadingResults(true);
       const result = await searchTracks(query);
-      setLoading(false);
+      if (cancelled) return;
+      setLoadingResults(false);
       if (result.data) setResults(result.data);
       else if (result.error) pushError(result.error);
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [query, pushError]);
 
   // Reset state when panel closes
@@ -85,7 +90,7 @@ const SearchPanel = ({
         </div>
 
         <div className="pm-overline-section" style={{ padding: "0 18px" }}>
-          {loading
+          {loadingResults
             ? "Searching…"
             : query.trim()
               ? `${results.length} ${results.length === 1 ? "result" : "results"}`
@@ -93,7 +98,7 @@ const SearchPanel = ({
         </div>
 
         <div className={styles.results}>
-          {!loading && query.trim() && results.length === 0 ? (
+          {!loadingResults && query.trim() && results.length === 0 ? (
             <div className={styles.noResults}>
               No matches. Try a different search.
             </div>
