@@ -1,5 +1,10 @@
 # Spotify Playlist Manager
 
+> [!CAUTION]
+> Spotify API changes no longer allow public access if not assosiated with a company and has over 250k users.
+>
+> Unfortunately this app does not work unless I've personally add you onto the one of the 5 user slot in developer dashboard.
+
 A web app that lets users create, edit, and manage their playlists, and bulk remove songs from playlists.
 
 I tend to add a lot of songs I like — or discover them through the Shazam app — into my Spotify playlists, and now have over 200 songs that need to be rearranged. Spotify doesn't have a way to select multiple songs in a playlist at once to move them to another playlist or remove them outright, but with the Spotify API, I decided to build that capability.
