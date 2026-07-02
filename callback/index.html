@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Connecting to Spotify…</title>
+    <script>
+      // GitHub Pages can't route /callback to the React SPA directly.
+      // Strip /callback from the pathname to get the app root, then
+      // redirect there with the Spotify code/state params preserved.
+      var base = window.location.pathname.replace(/\/callback\/?$/, '/');
+      window.location.replace(
+        window.location.origin + base + window.location.search
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
